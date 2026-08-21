@@ -1,0 +1,94 @@
+name: Deploy Gewa Realty to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare public-only GitHub Pages build
+        shell: bash
+        run: |
+          rm -rf src/app/api src/app/admin
+          python - <<'PY'
+          from pathlib import Path
+          for path in Path('src/app').rglob('*.tsx'):
+              text = path.read_text()
+              text = text.replace('export const dynamic = "force-dynamic";', 'export const dynamic = "force-static";')
+              path.write_text(text)
+          PY
+
+      - name: Build static website
+        env:
+          GITHUB_PAGES: "true"
+          NEXT_PUBLIC_SITE_URL: "https://satitech-official.github.io/gewa-reality-/"
+        run: pnpm build
+
+      - name: Validate GitHub Pages output
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          root = Path('out')
+          if not (root / 'index.html').exists():
+              raise SystemExit('Invalid Pages build: out/index.html missing')
+          css = list((root / '_next' / 'static').rglob('*.css'))
+          js = list((root / '_next' / 'static').rglob('*.js'))
+          images = list((root / 'images').glob('*'))
+          if not css:
+              raise SystemExit('Invalid Pages build: CSS assets missing')
+          if not js:
+              raise SystemExit('Invalid Pages build: JS assets missing')
+          if not images:
+              raise SystemExit('Invalid Pages build: public images missing')
+          (root / '.nojekyll').touch()
+          print(f'Validated: {len(css)} CSS, {len(js)} JS, {len(images)} image assets')
+          PY
+
+      - name: Configure and enable GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./out
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
