@@ -1,0 +1,26 @@
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+
+const databaseUrl = process.env.DATABASE_URL?.trim();
+
+const globalForDb = globalThis as typeof globalThis & {
+  __arenaNextJsPostgresqlPool?: Pool;
+};
+
+export const pool: Pool | null = databaseUrl
+  ? globalForDb.__arenaNextJsPostgresqlPool ??
+    new Pool({
+      connectionString: databaseUrl,
+    })
+  : null;
+
+if (process.env.NODE_ENV !== "production" && pool) {
+  globalForDb.__arenaNextJsPostgresqlPool = pool;
+}
+
+/**
+ * Database access is optional in preview/development mode. When DATABASE_URL
+ * is not configured, pages and API routes fall back to bundled demo data.
+ */
+export const db = pool ? drizzle(pool) : null;
+export const hasDatabase = Boolean(db);
