@@ -1,10 +1,15 @@
 import { getBlogPostBySlug } from "@/lib/server-data";
+import { mockBlogPosts } from "@/lib/mock-data";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/PageHero";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export const dynamic = process.env.GITHUB_PAGES === "true" ? "force-static" : "force-dynamic";
+
+export function generateStaticParams() {
+  return mockBlogPosts.filter((post) => post.isPublished).map((post) => ({ slug: post.slug }));
+}
 
 export default async function InsightDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
