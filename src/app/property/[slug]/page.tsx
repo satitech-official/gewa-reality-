@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import PropertyDetailClient from "./PropertyDetailClient";
 import { notFound } from "next/navigation";
 
-export const dynamic = process.env.GITHUB_PAGES === "true" ? "force-static" : "force-dynamic";
+export const dynamic = "force-dynamic";
 
 export function generateStaticParams() {
   return mockProperties.filter((property) => property.isPublished).map((property) => ({ slug: property.slug }));
