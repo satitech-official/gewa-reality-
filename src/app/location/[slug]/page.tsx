@@ -1,11 +1,16 @@
 import { getLocationBySlug, getPropertiesByLocation } from "@/lib/server-data";
+import { mockLocations } from "@/lib/mock-data";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PropertyCard from "@/components/PropertyCard";
 import PageHero from "@/components/PageHero";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export const dynamic = process.env.GITHUB_PAGES === "true" ? "force-static" : "force-dynamic";
+
+export function generateStaticParams() {
+  return mockLocations.filter((location) => location.isPublished).map((location) => ({ slug: location.slug }));
+}
 
 export default async function LocationDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
